@@ -133,17 +133,19 @@
             .await(ready);
 
         function ready(error, map) {
-            console.log(map);
-            svg.append("g")
-                .attr("class", "region")
+            var region = svg.append("g")
+                .attr("class", "regions")
                 .selectAll("path")
                 .data(map.features)
                 .enter().append("path")
                 .attr("d", path)
-                .attr('class', 'fill-purple stroke-purple-dark')
-                .style("opacity", 0.8)
-            console.log(i);
-            i++;
+                .attr('class', 'region fill-purple stroke-purple-dark')
+                .style("opacity", 0.8);
+
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('.region')) return;
+                d3.select("#main-data").node().classList.toggle('show')
+            }, false);
         }
     </script>
 </body>
