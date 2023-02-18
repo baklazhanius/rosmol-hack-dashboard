@@ -48,6 +48,10 @@ h1, h2, h3 {
 	fill: #DAEF14 !important;
 }
 
+#main-chart rect.bar:hover {
+	fill: #DAEF14 !important;
+}
+
 .stroke-purple-dark {
 	stroke: #4E15B9;
 }

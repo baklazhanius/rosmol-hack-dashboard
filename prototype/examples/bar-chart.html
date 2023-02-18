@@ -1,0 +1,206 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Столбчатые диаграммы</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/d3js/5.15.1/d3.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../assets/css/global.css">
+</head>
+<body class="bg-purple-light">
+<style>
+    path {
+        stroke-width: 1px;
+    }
+</style>
+ <div class="data-container">
+    <div id="main-chart" style="width: 100%;"></div>
+</div>
+
+<script type="text/javascript">
+
+    function setDataByDays(data){
+        var minDay = d3.min(data, (d) => d.day);
+        var maxDay = d3.max(data, (d) => d.day);
+
+        var minValue = d3.min(data, (d) => d.values.users);
+        var maxValue = d3.max(data, (d) => d.values.users);
+
+        var client = d3.select("#main-chart").node();
+        var margin = {top: 0, right: 2, bottom: 60, left: 46},
+            clientWidth = client.offsetWidth,
+            width = clientWidth - margin.left - margin.right,
+            height = (d3.select("body").node().offsetHeight * 2/ 3) - margin.top - margin.bottom;
+
+        var barGap = 6;
+        var minBarWidth = 16;
+        var barsPerScreen = 50;
+        var barWidth = Math.round((width - barGap * (barsPerScreen - 1)) / barsPerScreen);
+        if(barWidth < minBarWidth) {
+            barWidth = minBarWidth;
+        }
+        var halfBarWidth = barWidth / 2;
+
+        var x = d3.scaleBand()
+            .domain(data.map(function(d) { return d.day; }))
+            .range([0, (barWidth + barGap) * data.length])
+            .paddingInner(0.1)
+            .align(0.1);
+
+        var overwidth = (barWidth + barGap) * data.length;
+
+        var xAxis = d3.axisBottom(x);
+
+        var y = d3.scaleLinear()
+            .domain([0, (maxValue * 1.1)])
+            .range([height, 0]);
+
+
+        var yAxis = d3.axisLeft(y);
+
+
+        var svg = d3.select("#main-chart").append("svg")
+            .attr("width", clientWidth)
+            .attr("height", height + margin.top + margin.bottom)
+            .style("position", "absolute")
+            .style("pointer-events", "none")
+            .style("z-index", 1);
+
+        svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                .append("g")
+                .attr("class", "y-axis")
+                .call(yAxis)
+                    .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", -margin.left + 4)
+                    .attr("x", -height/2)
+                    .attr("fill", '#666666')
+                    .attr("dy", ".71em")
+                    .style("text-anchor", "middle")
+                    .style("font-size", "14px")
+                    .style("font-weight", "600")
+                    .text("Мероприятия");
+
+
+        var horizon = svg.append('g')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                .append("g");
+
+        let step = 10;
+        switch(true){
+            case maxValue*1.1 > 10000:
+                step = 1000;
+                break;
+            case maxValue*1.1 > 5000:
+                step = 500;
+                break;
+            case maxValue*1.1 > 2000:
+                step = 200;
+                break;
+            case maxValue*1.1 > 500:
+                step = 100;
+                break;
+            case maxValue*1.1 > 100:
+                step = 20;
+                break;
+        }
+        
+        for(let h = step; h < maxValue*1.1; h+=step) {  
+            horizon.append("line")
+              .attr("class", "line-hundred-" + h)
+              .attr("x1", 0)
+              .attr("x2", width)
+              .attr("y1", y(h))
+              .attr("y2", y(h))
+              .attr("stroke-width", 0.1)
+              .attr("stroke", "#666666")
+              .attr('stroke-dasharray',[3,3])
+              .attr("fill", "none");
+        }
+
+        var body = d3.select("#main-chart")
+            .append("div")
+            .attr("class", "srollarea")
+            .style("overflow-x", "scroll")
+            .style("direction", "rtl")
+            .style("padding-bottom", "20px")
+            .style("-webkit-overflow-scrolling", "touch")
+            .style("margin-left", margin.left + "px")
+            .style("margin-right", margin.right + "px")
+
+
+        var area = body.append("svg")
+            .attr("width", overwidth)
+            .attr("height", height + margin.top + margin.bottom)
+            .style("display", "block");
+
+        var defs = area.append("defs");
+
+        let gradient = defs.append("linearGradient")
+               .attr("id", 'bar-gradient')
+               .attr("x1", "0%")
+               .attr("x2", "100%")
+               .attr("y1", "0%")
+               .attr("y2", "100%")
+               // .attr("gradientTransform", "rotate(-45)");
+
+            gradient.append("stop")
+               .attr('class', 'start')
+               .attr("offset", "0%")
+               .attr("stop-color", '#8C64D8')
+               .attr("stop-opacity", 1);
+
+            gradient.append("stop")
+               .attr('class', 'end')
+               .attr("offset", "100%")
+               .attr("stop-color", '#373B44')
+               .attr("stop-opacity", 1);
+
+        area.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis)
+                .selectAll("text")
+                .attr("y", 0)
+                .attr("x", -9)
+                .attr("dy", ".35em")
+                .attr("transform", "rotate(-90)")
+                .style("text-anchor", "start");
+
+
+        area.append('g').selectAll(".bar")
+          .data(data)
+          .enter().append("rect")
+            .attr("class", "bar")
+            .attr('fill', 'url(#bar-gradient)')
+            .attr("x", function(d) { return x(d.day); })
+            .attr("width", barWidth)
+            .attr("y", function(d) { return y(d.values.users); })
+            .attr("height", function(d) { return height - y(d.values.users); });
+
+        area.append('g').selectAll(".bar-text")
+          .data(data.filter((d) => d.values.users > 0))
+          .enter().append("text")
+            .attr("class", "bar-text")
+            .attr("transform", "rotate(-90)")
+            .attr("transform-origin", (d) => x(d.day) + ' ' + height)
+            .style("text-anchor", "start")
+            .style("font-size", "12")
+            .attr("fill", '#fff')
+            .attr("dy", halfBarWidth + 5)
+            .attr("dx", "-0.35em")
+            .attr("x", (d) => x(d.day) - y(d.values.users) + height)
+            .attr("y", height)
+            .text((d) => d.values.users);
+
+    }
+    let dataString = '{"success":true,"message":"","data":[{"sort":"20210101","day":"01.01.2021","values":{"users":59}},{"sort":"20210102","day":"02.01.2021","values":{"users":59}},{"sort":"20210103","day":"03.01.2021","values":{"users":59}},{"sort":"20210104","day":"04.01.2021","values":{"users":59}},{"sort":"20210105","day":"05.01.2021","values":{"users":59}},{"sort":"20210106","day":"06.01.2021","values":{"users":59}},{"sort":"20210107","day":"07.01.2021","values":{"users":59}},{"sort":"20210108","day":"08.01.2021","values":{"users":59}},{"sort":"20210109","day":"09.01.2021","values":{"users":59}},{"sort":"20210110","day":"10.01.2021","values":{"users":59}},{"sort":"20210111","day":"11.01.2021","values":{"users":59}},{"sort":"20210112","day":"12.01.2021","values":{"users":59}},{"sort":"20210113","day":"13.01.2021","values":{"users":59}},{"sort":"20210114","day":"14.01.2021","values":{"users":59}},{"sort":"20210115","day":"15.01.2021","values":{"users":59}},{"sort":"20210116","day":"16.01.2021","values":{"users":59}},{"sort":"20210117","day":"17.01.2021","values":{"users":59}},{"sort":"20210118","day":"18.01.2021","values":{"users":59}},{"sort":"20210119","day":"19.01.2021","values":{"users":59}},{"sort":"20210120","day":"20.01.2021","values":{"users":59}},{"sort":"20210121","day":"21.01.2021","values":{"users":59}},{"sort":"20210122","day":"22.01.2021","values":{"users":59}},{"sort":"20210123","day":"23.01.2021","values":{"users":59}},{"sort":"20210124","day":"24.01.2021","values":{"users":59}},{"sort":"20210125","day":"25.01.2021","values":{"users":59}},{"sort":"20210126","day":"26.01.2021","values":{"users":59}},{"sort":"20210127","day":"27.01.2021","values":{"users":59}},{"sort":"20210128","day":"28.01.2021","values":{"users":59}},{"sort":"20210129","day":"29.01.2021","values":{"users":59}},{"sort":"20210130","day":"30.01.2021","values":{"users":59}},{"sort":"20210131","day":"31.01.2021","values":{"users":59}},{"sort":"20210201","day":"01.02.2021","values":{"users":59}},{"sort":"20210202","day":"02.02.2021","values":{"users":59}},{"sort":"20210203","day":"03.02.2021","values":{"users":59}},{"sort":"20210204","day":"04.02.2021","values":{"users":59}},{"sort":"20210205","day":"05.02.2021","values":{"users":60}},{"sort":"20210206","day":"06.02.2021","values":{"users":60}},{"sort":"20210207","day":"07.02.2021","values":{"users":60}},{"sort":"20210208","day":"08.02.2021","values":{"users":60}},{"sort":"20210209","day":"09.02.2021","values":{"users":60}},{"sort":"20210210","day":"10.02.2021","values":{"users":63}},{"sort":"20210211","day":"11.02.2021","values":{"users":63}},{"sort":"20210212","day":"12.02.2021","values":{"users":63}},{"sort":"20210213","day":"13.02.2021","values":{"users":63}},{"sort":"20210214","day":"14.02.2021","values":{"users":63}},{"sort":"20210215","day":"15.02.2021","values":{"users":63}},{"sort":"20210216","day":"16.02.2021","values":{"users":63}},{"sort":"20210217","day":"17.02.2021","values":{"users":63}},{"sort":"20210218","day":"18.02.2021","values":{"users":63}},{"sort":"20210219","day":"19.02.2021","values":{"users":63}},{"sort":"20210220","day":"20.02.2021","values":{"users":63}},{"sort":"20210221","day":"21.02.2021","values":{"users":63}},{"sort":"20210222","day":"22.02.2021","values":{"users":63}},{"sort":"20210223","day":"23.02.2021","values":{"users":63}},{"sort":"20210224","day":"24.02.2021","values":{"users":63}},{"sort":"20210225","day":"25.02.2021","values":{"users":63}},{"sort":"20210226","day":"26.02.2021","values":{"users":63}},{"sort":"20210227","day":"27.02.2021","values":{"users":63}},{"sort":"20210228","day":"28.02.2021","values":{"users":63}},{"sort":"20210301","day":"01.03.2021","values":{"users":63}},{"sort":"20210302","day":"02.03.2021","values":{"users":65}},{"sort":"20210303","day":"03.03.2021","values":{"users":65}},{"sort":"20210304","day":"04.03.2021","values":{"users":65}},{"sort":"20210305","day":"05.03.2021","values":{"users":65}},{"sort":"20210306","day":"06.03.2021","values":{"users":70}},{"sort":"20210307","day":"07.03.2021","values":{"users":80}},{"sort":"20210308","day":"08.03.2021","values":{"users":82}},{"sort":"20210309","day":"09.03.2021","values":{"users":84}},{"sort":"20210310","day":"10.03.2021","values":{"users":84}},{"sort":"20210311","day":"11.03.2021","values":{"users":84}},{"sort":"20210312","day":"12.03.2021","values":{"users":84}},{"sort":"20210313","day":"13.03.2021","values":{"users":84}},{"sort":"20210314","day":"14.03.2021","values":{"users":84}},{"sort":"20210315","day":"15.03.2021","values":{"users":84}},{"sort":"20210316","day":"16.03.2021","values":{"users":85}},{"sort":"20210317","day":"17.03.2021","values":{"users":85}},{"sort":"20210318","day":"18.03.2021","values":{"users":85}},{"sort":"20210319","day":"19.03.2021","values":{"users":85}},{"sort":"20210320","day":"20.03.2021","values":{"users":85}},{"sort":"20210321","day":"21.03.2021","values":{"users":85}},{"sort":"20210322","day":"22.03.2021","values":{"users":86}},{"sort":"20210323","day":"23.03.2021","values":{"users":86}},{"sort":"20210324","day":"24.03.2021","values":{"users":86}},{"sort":"20210325","day":"25.03.2021","values":{"users":86}},{"sort":"20210326","day":"26.03.2021","values":{"users":86}},{"sort":"20210327","day":"27.03.2021","values":{"users":87}},{"sort":"20210328","day":"28.03.2021","values":{"users":87}},{"sort":"20210329","day":"29.03.2021","values":{"users":87}},{"sort":"20210404","day":"04.04.2021","values":{"users":93}},{"sort":"20210405","day":"05.04.2021","values":{"users":119}},{"sort":"20210406","day":"06.04.2021","values":{"users":123}},{"sort":"20210407","day":"07.04.2021","values":{"users":124}},{"sort":"20210408","day":"08.04.2021","values":{"users":125}},{"sort":"20210409","day":"09.04.2021","values":{"users":127}},{"sort":"20210410","day":"10.04.2021","values":{"users":128}},{"sort":"20210411","day":"11.04.2021","values":{"users":129}},{"sort":"20210412","day":"12.04.2021","values":{"users":129}},{"sort":"20210413","day":"13.04.2021","values":{"users":129}},{"sort":"20210414","day":"14.04.2021","values":{"users":129}},{"sort":"20210415","day":"15.04.2021","values":{"users":131}},{"sort":"20210416","day":"16.04.2021","values":{"users":131}},{"sort":"20210417","day":"17.04.2021","values":{"users":131}},{"sort":"20210418","day":"18.04.2021","values":{"users":131}},{"sort":"20210419","day":"19.04.2021","values":{"users":131}},{"sort":"20210420","day":"20.04.2021","values":{"users":131}},{"sort":"20210421","day":"21.04.2021","values":{"users":131}},{"sort":"20210422","day":"22.04.2021","values":{"users":131}},{"sort":"20210423","day":"23.04.2021","values":{"users":132}},{"sort":"20210424","day":"24.04.2021","values":{"users":132}},{"sort":"20210425","day":"25.04.2021","values":{"users":132}},{"sort":"20210426","day":"26.04.2021","values":{"users":133}},{"sort":"20210427","day":"27.04.2021","values":{"users":133}},{"sort":"20210428","day":"28.04.2021","values":{"users":133}},{"sort":"20210429","day":"29.04.2021","values":{"users":134}},{"sort":"20210430","day":"30.04.2021","values":{"users":134}},{"sort":"20210501","day":"01.05.2021","values":{"users":134}},{"sort":"20210502","day":"02.05.2021","values":{"users":134}},{"sort":"20210503","day":"03.05.2021","values":{"users":134}},{"sort":"20210504","day":"04.05.2021","values":{"users":136}},{"sort":"20210505","day":"05.05.2021","values":{"users":136}},{"sort":"20210506","day":"06.05.2021","values":{"users":136}},{"sort":"20210507","day":"07.05.2021","values":{"users":136}},{"sort":"20210508","day":"08.05.2021","values":{"users":137}},{"sort":"20210509","day":"09.05.2021","values":{"users":138}},{"sort":"20210510","day":"10.05.2021","values":{"users":139}},{"sort":"20210511","day":"11.05.2021","values":{"users":139}},{"sort":"20210512","day":"12.05.2021","values":{"users":140}},{"sort":"20210513","day":"13.05.2021","values":{"users":142}},{"sort":"20210514","day":"14.05.2021","values":{"users":143}},{"sort":"20210515","day":"15.05.2021","values":{"users":143}},{"sort":"20210516","day":"16.05.2021","values":{"users":143}},{"sort":"20210517","day":"17.05.2021","values":{"users":144}},{"sort":"20210518","day":"18.05.2021","values":{"users":146}},{"sort":"20210519","day":"19.05.2021","values":{"users":146}},{"sort":"20210520","day":"20.05.2021","values":{"users":146}},{"sort":"20210521","day":"21.05.2021","values":{"users":146}},{"sort":"20210522","day":"22.05.2021","values":{"users":146}},{"sort":"20210523","day":"23.05.2021","values":{"users":146}},{"sort":"20210524","day":"24.05.2021","values":{"users":146}},{"sort":"20210525","day":"25.05.2021","values":{"users":147}},{"sort":"20210526","day":"26.05.2021","values":{"users":147}},{"sort":"20210527","day":"27.05.2021","values":{"users":147}},{"sort":"20210528","day":"28.05.2021","values":{"users":147}},{"sort":"20210529","day":"29.05.2021","values":{"users":147}},{"sort":"20210530","day":"30.05.2021","values":{"users":147}},{"sort":"20210531","day":"31.05.2021","values":{"users":148}},{"sort":"20210601","day":"01.06.2021","values":{"users":148}},{"sort":"20210602","day":"02.06.2021","values":{"users":148}},{"sort":"20210603","day":"03.06.2021","values":{"users":148}},{"sort":"20210604","day":"04.06.2021","values":{"users":148}},{"sort":"20210605","day":"05.06.2021","values":{"users":148}},{"sort":"20210606","day":"06.06.2021","values":{"users":148}},{"sort":"20210607","day":"07.06.2021","values":{"users":149}},{"sort":"20210608","day":"08.06.2021","values":{"users":149}},{"sort":"20210609","day":"09.06.2021","values":{"users":150}},{"sort":"20210610","day":"10.06.2021","values":{"users":150}},{"sort":"20210611","day":"11.06.2021","values":{"users":150}},{"sort":"20210612","day":"12.06.2021","values":{"users":150}},{"sort":"20210613","day":"13.06.2021","values":{"users":150}},{"sort":"20210614","day":"14.06.2021","values":{"users":150}},{"sort":"20210615","day":"15.06.2021","values":{"users":150}},{"sort":"20210616","day":"16.06.2021","values":{"users":150}},{"sort":"20210617","day":"17.06.2021","values":{"users":150}},{"sort":"20210618","day":"18.06.2021","values":{"users":150}},{"sort":"20210619","day":"19.06.2021","values":{"users":153}},{"sort":"20210620","day":"20.06.2021","values":{"users":153}},{"sort":"20210621","day":"21.06.2021","values":{"users":153}},{"sort":"20210622","day":"22.06.2021","values":{"users":153}},{"sort":"20210623","day":"23.06.2021","values":{"users":153}},{"sort":"20210624","day":"24.06.2021","values":{"users":159}},{"sort":"20210625","day":"25.06.2021","values":{"users":162}},{"sort":"20210626","day":"26.06.2021","values":{"users":162}},{"sort":"20210627","day":"27.06.2021","values":{"users":162}},{"sort":"20210628","day":"28.06.2021","values":{"users":164}},{"sort":"20210629","day":"29.06.2021","values":{"users":164}},{"sort":"20210630","day":"30.06.2021","values":{"users":164}},{"sort":"20210701","day":"01.07.2021","values":{"users":165}},{"sort":"20210702","day":"02.07.2021","values":{"users":190}},{"sort":"20210703","day":"03.07.2021","values":{"users":210}},{"sort":"20210704","day":"04.07.2021","values":{"users":223}},{"sort":"20210705","day":"05.07.2021","values":{"users":230}},{"sort":"20210706","day":"06.07.2021","values":{"users":233}},{"sort":"20210707","day":"07.07.2021","values":{"users":234}},{"sort":"20210708","day":"08.07.2021","values":{"users":235}},{"sort":"20210709","day":"09.07.2021","values":{"users":235}},{"sort":"20210710","day":"10.07.2021","values":{"users":236}},{"sort":"20210711","day":"11.07.2021","values":{"users":236}},{"sort":"20210712","day":"12.07.2021","values":{"users":236}},{"sort":"20210713","day":"13.07.2021","values":{"users":236}},{"sort":"20210714","day":"14.07.2021","values":{"users":236}},{"sort":"20210715","day":"15.07.2021","values":{"users":238}},{"sort":"20210716","day":"16.07.2021","values":{"users":239}},{"sort":"20210717","day":"17.07.2021","values":{"users":239}},{"sort":"20210718","day":"18.07.2021","values":{"users":241}},{"sort":"20210719","day":"19.07.2021","values":{"users":241}},{"sort":"20210720","day":"20.07.2021","values":{"users":241}},{"sort":"20210721","day":"21.07.2021","values":{"users":243}},{"sort":"20210722","day":"22.07.2021","values":{"users":253}},{"sort":"20210723","day":"23.07.2021","values":{"users":259}},{"sort":"20210724","day":"24.07.2021","values":{"users":260}},{"sort":"20210725","day":"25.07.2021","values":{"users":260}},{"sort":"20210726","day":"26.07.2021","values":{"users":262}},{"sort":"20210727","day":"27.07.2021","values":{"users":266}},{"sort":"20210728","day":"28.07.2021","values":{"users":266}},{"sort":"20210729","day":"29.07.2021","values":{"users":266}},{"sort":"20210730","day":"30.07.2021","values":{"users":267}},{"sort":"20210731","day":"31.07.2021","values":{"users":267}},{"sort":"20210801","day":"01.08.2021","values":{"users":267}},{"sort":"20210802","day":"02.08.2021","values":{"users":268}},{"sort":"20210803","day":"03.08.2021","values":{"users":269}},{"sort":"20210804","day":"04.08.2021","values":{"users":269}},{"sort":"20210805","day":"05.08.2021","values":{"users":269}},{"sort":"20210806","day":"06.08.2021","values":{"users":269}},{"sort":"20210807","day":"07.08.2021","values":{"users":270}},{"sort":"20210808","day":"08.08.2021","values":{"users":270}},{"sort":"20210809","day":"09.08.2021","values":{"users":270}},{"sort":"20210810","day":"10.08.2021","values":{"users":270}},{"sort":"20210811","day":"11.08.2021","values":{"users":271}},{"sort":"20210812","day":"12.08.2021","values":{"users":271}},{"sort":"20210813","day":"13.08.2021","values":{"users":271}},{"sort":"20210814","day":"14.08.2021","values":{"users":271}},{"sort":"20210815","day":"15.08.2021","values":{"users":271}},{"sort":"20210816","day":"16.08.2021","values":{"users":271}},{"sort":"20210817","day":"17.08.2021","values":{"users":272}},{"sort":"20210818","day":"18.08.2021","values":{"users":272}},{"sort":"20210819","day":"19.08.2021","values":{"users":272}},{"sort":"20210820","day":"20.08.2021","values":{"users":272}},{"sort":"20210821","day":"21.08.2021","values":{"users":272}},{"sort":"20210822","day":"22.08.2021","values":{"users":272}},{"sort":"20210823","day":"23.08.2021","values":{"users":272}},{"sort":"20210824","day":"24.08.2021","values":{"users":272}},{"sort":"20210825","day":"25.08.2021","values":{"users":272}},{"sort":"20210826","day":"26.08.2021","values":{"users":272}},{"sort":"20210827","day":"27.08.2021","values":{"users":272}},{"sort":"20210828","day":"28.08.2021","values":{"users":272}},{"sort":"20210829","day":"29.08.2021","values":{"users":272}},{"sort":"20210830","day":"30.08.2021","values":{"users":272}},{"sort":"20210831","day":"31.08.2021","values":{"users":273}},{"sort":"20210901","day":"01.09.2021","values":{"users":274}},{"sort":"20210902","day":"02.09.2021","values":{"users":274}},{"sort":"20210903","day":"03.09.2021","values":{"users":276}},{"sort":"20210904","day":"04.09.2021","values":{"users":277}},{"sort":"20210905","day":"05.09.2021","values":{"users":277}},{"sort":"20210906","day":"06.09.2021","values":{"users":277}},{"sort":"20210907","day":"07.09.2021","values":{"users":277}},{"sort":"20210908","day":"08.09.2021","values":{"users":277}},{"sort":"20210909","day":"09.09.2021","values":{"users":277}},{"sort":"20210910","day":"10.09.2021","values":{"users":277}},{"sort":"20210911","day":"11.09.2021","values":{"users":278}},{"sort":"20210912","day":"12.09.2021","values":{"users":278}},{"sort":"20210913","day":"13.09.2021","values":{"users":278}},{"sort":"20210914","day":"14.09.2021","values":{"users":278}},{"sort":"20210915","day":"15.09.2021","values":{"users":278}},{"sort":"20210916","day":"16.09.2021","values":{"users":278}},{"sort":"20210917","day":"17.09.2021","values":{"users":278}},{"sort":"20210918","day":"18.09.2021","values":{"users":278}},{"sort":"20210919","day":"19.09.2021","values":{"users":278}},{"sort":"20210920","day":"20.09.2021","values":{"users":278}},{"sort":"20210921","day":"21.09.2021","values":{"users":278}},{"sort":"20210922","day":"22.09.2021","values":{"users":279}},{"sort":"20210923","day":"23.09.2021","values":{"users":279}},{"sort":"20210924","day":"24.09.2021","values":{"users":279}},{"sort":"20210925","day":"25.09.2021","values":{"users":279}},{"sort":"20210926","day":"26.09.2021","values":{"users":279}},{"sort":"20210927","day":"27.09.2021","values":{"users":279}},{"sort":"20210928","day":"28.09.2021","values":{"users":279}},{"sort":"20210929","day":"29.09.2021","values":{"users":279}},{"sort":"20210930","day":"30.09.2021","values":{"users":279}},{"sort":"20211001","day":"01.10.2021","values":{"users":279}},{"sort":"20211002","day":"02.10.2021","values":{"users":279}},{"sort":"20211003","day":"03.10.2021","values":{"users":279}},{"sort":"20211004","day":"04.10.2021","values":{"users":279}},{"sort":"20211005","day":"05.10.2021","values":{"users":279}},{"sort":"20211006","day":"06.10.2021","values":{"users":279}},{"sort":"20211007","day":"07.10.2021","values":{"users":279}},{"sort":"20211008","day":"08.10.2021","values":{"users":279}},{"sort":"20211009","day":"09.10.2021","values":{"users":279}},{"sort":"20211010","day":"10.10.2021","values":{"users":279}},{"sort":"20211011","day":"11.10.2021","values":{"users":279}},{"sort":"20211012","day":"12.10.2021","values":{"users":279}},{"sort":"20211013","day":"13.10.2021","values":{"users":279}},{"sort":"20211014","day":"14.10.2021","values":{"users":279}},{"sort":"20211015","day":"15.10.2021","values":{"users":279}},{"sort":"20211016","day":"16.10.2021","values":{"users":279}},{"sort":"20211017","day":"17.10.2021","values":{"users":279}},{"sort":"20211018","day":"18.10.2021","values":{"users":279}},{"sort":"20211019","day":"19.10.2021","values":{"users":279}},{"sort":"20211020","day":"20.10.2021","values":{"users":279}},{"sort":"20211021","day":"21.10.2021","values":{"users":279}},{"sort":"20211022","day":"22.10.2021","values":{"users":279}},{"sort":"20211023","day":"23.10.2021","values":{"users":279}},{"sort":"20211024","day":"24.10.2021","values":{"users":279}},{"sort":"20211025","day":"25.10.2021","values":{"users":279}},{"sort":"20211026","day":"26.10.2021","values":{"users":279}},{"sort":"20211027","day":"27.10.2021","values":{"users":279}},{"sort":"20211028","day":"28.10.2021","values":{"users":279}},{"sort":"20211029","day":"29.10.2021","values":{"users":279}},{"sort":"20211030","day":"30.10.2021","values":{"users":279}},{"sort":"20211031","day":"31.10.2021","values":{"users":279}},{"sort":"20211101","day":"01.11.2021","values":{"users":279}},{"sort":"20211102","day":"02.11.2021","values":{"users":279}},{"sort":"20211103","day":"03.11.2021","values":{"users":279}},{"sort":"20211104","day":"04.11.2021","values":{"users":279}},{"sort":"20211105","day":"05.11.2021","values":{"users":279}},{"sort":"20211106","day":"06.11.2021","values":{"users":279}},{"sort":"20211107","day":"07.11.2021","values":{"users":279}},{"sort":"20211108","day":"08.11.2021","values":{"users":279}},{"sort":"20211109","day":"09.11.2021","values":{"users":279}},{"sort":"20211110","day":"10.11.2021","values":{"users":279}},{"sort":"20211111","day":"11.11.2021","values":{"users":279}},{"sort":"20211112","day":"12.11.2021","values":{"users":279}},{"sort":"20211113","day":"13.11.2021","values":{"users":279}},{"sort":"20211114","day":"14.11.2021","values":{"users":279}},{"sort":"20211115","day":"15.11.2021","values":{"users":279}},{"sort":"20211116","day":"16.11.2021","values":{"users":279}},{"sort":"20211117","day":"17.11.2021","values":{"users":279}},{"sort":"20211118","day":"18.11.2021","values":{"users":279}},{"sort":"20211119","day":"19.11.2021","values":{"users":279}},{"sort":"20211120","day":"20.11.2021","values":{"users":279}},{"sort":"20211121","day":"21.11.2021","values":{"users":279}},{"sort":"20211122","day":"22.11.2021","values":{"users":279}},{"sort":"20211123","day":"23.11.2021","values":{"users":279}},{"sort":"20211124","day":"24.11.2021","values":{"users":279}},{"sort":"20211125","day":"25.11.2021","values":{"users":279}},{"sort":"20211126","day":"26.11.2021","values":{"users":279}},{"sort":"20211127","day":"27.11.2021","values":{"users":279}},{"sort":"20211128","day":"28.11.2021","values":{"users":279}},{"sort":"20211129","day":"29.11.2021","values":{"users":279}},{"sort":"20211130","day":"30.11.2021","values":{"users":279}},{"sort":"20211201","day":"01.12.2021","values":{"users":279}},{"sort":"20211202","day":"02.12.2021","values":{"users":279}},{"sort":"20211203","day":"03.12.2021","values":{"users":279}},{"sort":"20211204","day":"04.12.2021","values":{"users":283}},{"sort":"20211205","day":"05.12.2021","values":{"users":292}},{"sort":"20211206","day":"06.12.2021","values":{"users":298}},{"sort":"20211207","day":"07.12.2021","values":{"users":299}},{"sort":"20211208","day":"08.12.2021","values":{"users":299}},{"sort":"20211209","day":"09.12.2021","values":{"users":300}},{"sort":"20211210","day":"10.12.2021","values":{"users":301}},{"sort":"20211211","day":"11.12.2021","values":{"users":302}},{"sort":"20211212","day":"12.12.2021","values":{"users":302}},{"sort":"20211213","day":"13.12.2021","values":{"users":302}},{"sort":"20211214","day":"14.12.2021","values":{"users":303}},{"sort":"20211215","day":"15.12.2021","values":{"users":303}},{"sort":"20211216","day":"16.12.2021","values":{"users":303}},{"sort":"20211217","day":"17.12.2021","values":{"users":303}},{"sort":"20211218","day":"18.12.2021","values":{"users":304}},{"sort":"20211219","day":"19.12.2021","values":{"users":304}},{"sort":"20211220","day":"20.12.2021","values":{"users":304}},{"sort":"20211221","day":"21.12.2021","values":{"users":304}},{"sort":"20211222","day":"22.12.2021","values":{"users":304}},{"sort":"20211223","day":"23.12.2021","values":{"users":304}},{"sort":"20211224","day":"24.12.2021","values":{"users":304}},{"sort":"20211225","day":"25.12.2021","values":{"users":304}},{"sort":"20211226","day":"26.12.2021","values":{"users":304}},{"sort":"20211227","day":"27.12.2021","values":{"users":304}},{"sort":"20211228","day":"28.12.2021","values":{"users":304}},{"sort":"20211229","day":"29.12.2021","values":{"users":304}},{"sort":"20211230","day":"30.12.2021","values":{"users":304}},{"sort":"20211231","day":"31.12.2021","values":{"users":304}},{"sort":"20220101","day":"01.01.2022","values":{"users":304}},{"sort":"20220102","day":"02.01.2022","values":{"users":304}},{"sort":"20220103","day":"03.01.2022","values":{"users":304}},{"sort":"20220104","day":"04.01.2022","values":{"users":304}},{"sort":"20220105","day":"05.01.2022","values":{"users":304}},{"sort":"20220106","day":"06.01.2022","values":{"users":304}},{"sort":"20220107","day":"07.01.2022","values":{"users":304}},{"sort":"20220108","day":"08.01.2022","values":{"users":304}},{"sort":"20220109","day":"09.01.2022","values":{"users":304}},{"sort":"20220110","day":"10.01.2022","values":{"users":304}},{"sort":"20220111","day":"11.01.2022","values":{"users":304}},{"sort":"20220112","day":"12.01.2022","values":{"users":305}},{"sort":"20220113","day":"13.01.2022","values":{"users":305}},{"sort":"20220114","day":"14.01.2022","values":{"users":305}},{"sort":"20220115","day":"15.01.2022","values":{"users":305}},{"sort":"20220116","day":"16.01.2022","values":{"users":305}},{"sort":"20220117","day":"17.01.2022","values":{"users":305}},{"sort":"20220118","day":"18.01.2022","values":{"users":305}},{"sort":"20220119","day":"19.01.2022","values":{"users":305}},{"sort":"20220120","day":"20.01.2022","values":{"users":305}},{"sort":"20220121","day":"21.01.2022","values":{"users":305}},{"sort":"20220122","day":"22.01.2022","values":{"users":305}},{"sort":"20220123","day":"23.01.2022","values":{"users":305}},{"sort":"20220124","day":"24.01.2022","values":{"users":305}},{"sort":"20220125","day":"25.01.2022","values":{"users":305}},{"sort":"20220126","day":"26.01.2022","values":{"users":305}},{"sort":"20220127","day":"27.01.2022","values":{"users":305}},{"sort":"20220128","day":"28.01.2022","values":{"users":305}},{"sort":"20220129","day":"29.01.2022","values":{"users":305}},{"sort":"20220130","day":"30.01.2022","values":{"users":305}},{"sort":"20220131","day":"31.01.2022","values":{"users":305}},{"sort":"20220201","day":"01.02.2022","values":{"users":305}},{"sort":"20220202","day":"02.02.2022","values":{"users":305}},{"sort":"20220203","day":"03.02.2022","values":{"users":305}},{"sort":"20220204","day":"04.02.2022","values":{"users":305}},{"sort":"20220205","day":"05.02.2022","values":{"users":305}},{"sort":"20220206","day":"06.02.2022","values":{"users":305}},{"sort":"20220207","day":"07.02.2022","values":{"users":305}},{"sort":"20220208","day":"08.02.2022","values":{"users":305}},{"sort":"20220209","day":"09.02.2022","values":{"users":305}},{"sort":"20220210","day":"10.02.2022","values":{"users":305}},{"sort":"20220211","day":"11.02.2022","values":{"users":305}},{"sort":"20220212","day":"12.02.2022","values":{"users":305}},{"sort":"20220213","day":"13.02.2022","values":{"users":305}},{"sort":"20220214","day":"14.02.2022","values":{"users":305}},{"sort":"20220215","day":"15.02.2022","values":{"users":305}},{"sort":"20220216","day":"16.02.2022","values":{"users":305}},{"sort":"20220217","day":"17.02.2022","values":{"users":305}},{"sort":"20220218","day":"18.02.2022","values":{"users":305}},{"sort":"20220219","day":"19.02.2022","values":{"users":305}},{"sort":"20220220","day":"20.02.2022","values":{"users":305}},{"sort":"20220221","day":"21.02.2022","values":{"users":305}},{"sort":"20220222","day":"22.02.2022","values":{"users":305}},{"sort":"20220223","day":"23.02.2022","values":{"users":305}},{"sort":"20220224","day":"24.02.2022","values":{"users":305}},{"sort":"20220225","day":"25.02.2022","values":{"users":305}},{"sort":"20220226","day":"26.02.2022","values":{"users":305}},{"sort":"20220227","day":"27.02.2022","values":{"users":305}},{"sort":"20220228","day":"28.02.2022","values":{"users":305}},{"sort":"20220301","day":"01.03.2022","values":{"users":305}},{"sort":"20220302","day":"02.03.2022","values":{"users":305}},{"sort":"20220303","day":"03.03.2022","values":{"users":305}},{"sort":"20220304","day":"04.03.2022","values":{"users":305}},{"sort":"20220305","day":"05.03.2022","values":{"users":305}},{"sort":"20220306","day":"06.03.2022","values":{"users":305}},{"sort":"20220307","day":"07.03.2022","values":{"users":305}},{"sort":"20220308","day":"08.03.2022","values":{"users":305}},{"sort":"20220309","day":"09.03.2022","values":{"users":305}},{"sort":"20220310","day":"10.03.2022","values":{"users":305}},{"sort":"20220311","day":"11.03.2022","values":{"users":305}},{"sort":"20220312","day":"12.03.2022","values":{"users":305}},{"sort":"20220313","day":"13.03.2022","values":{"users":305}},{"sort":"20220314","day":"14.03.2022","values":{"users":305}},{"sort":"20220315","day":"15.03.2022","values":{"users":305}},{"sort":"20220316","day":"16.03.2022","values":{"users":305}},{"sort":"20220317","day":"17.03.2022","values":{"users":305}},{"sort":"20220318","day":"18.03.2022","values":{"users":305}},{"sort":"20220319","day":"19.03.2022","values":{"users":305}},{"sort":"20220320","day":"20.03.2022","values":{"users":305}},{"sort":"20220321","day":"21.03.2022","values":{"users":306}},{"sort":"20220322","day":"22.03.2022","values":{"users":307}},{"sort":"20220323","day":"23.03.2022","values":{"users":307}},{"sort":"20220324","day":"24.03.2022","values":{"users":307}},{"sort":"20220325","day":"25.03.2022","values":{"users":307}},{"sort":"20220326","day":"26.03.2022","values":{"users":307}},{"sort":"20220327","day":"27.03.2022","values":{"users":307}},{"sort":"20220328","day":"28.03.2022","values":{"users":307}},{"sort":"20220329","day":"29.03.2022","values":{"users":307}},{"sort":"20220330","day":"30.03.2022","values":{"users":307}},{"sort":"20220331","day":"31.03.2022","values":{"users":307}},{"sort":"20220401","day":"01.04.2022","values":{"users":307}},{"sort":"20220402","day":"02.04.2022","values":{"users":307}},{"sort":"20220403","day":"03.04.2022","values":{"users":307}},{"sort":"20220404","day":"04.04.2022","values":{"users":307}},{"sort":"20220405","day":"05.04.2022","values":{"users":307}},{"sort":"20220406","day":"06.04.2022","values":{"users":307}},{"sort":"20220407","day":"07.04.2022","values":{"users":307}},{"sort":"20220408","day":"08.04.2022","values":{"users":307}},{"sort":"20220409","day":"09.04.2022","values":{"users":307}},{"sort":"20220410","day":"10.04.2022","values":{"users":307}},{"sort":"20220411","day":"11.04.2022","values":{"users":308}},{"sort":"20220412","day":"12.04.2022","values":{"users":308}},{"sort":"20220413","day":"13.04.2022","values":{"users":308}},{"sort":"20220414","day":"14.04.2022","values":{"users":308}},{"sort":"20220415","day":"15.04.2022","values":{"users":308}},{"sort":"20220416","day":"16.04.2022","values":{"users":308}},{"sort":"20220417","day":"17.04.2022","values":{"users":308}},{"sort":"20220418","day":"18.04.2022","values":{"users":308}},{"sort":"20220419","day":"19.04.2022","values":{"users":309}},{"sort":"20220420","day":"20.04.2022","values":{"users":309}},{"sort":"20220521","day":"21.05.2022","values":{"users":309}},{"sort":"20230107","day":"07.01.2023","values":{"users":310}},{"sort":"20230218","day":"18.02.2023","values":{"users":311}}],"metrics":[]}';
+    let response = JSON.parse(dataString);
+    let filteredArray = response.data.filter((value, index, self) => {
+      return self.findIndex(v => v.values.users === value.values.users) === index;
+    })
+    setDataByDays(filteredArray);
+
+</script>
+</body>
+</html>
