@@ -1,0 +1,152 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Картограмма с базовыми показателями</title>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+    <script type="text/javascript" src="http://d3js.org/queue.v1.min.js"></script>
+    <script type="text/javascript" src="http://d3js.org/topojson.v1.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../assets/css/global.css">
+</head>
+<body class="bg-purple-light">
+<style>
+    path {
+        stroke-width: 1px;
+    }
+</style>
+<div id="main-map" style="width: 100%;"></div>
+<div id="main-data" class="bg-white">
+    <div class="data-container">
+        <div class="data-block bg-purple">
+            <div class="data-border">            
+                <h2 class="data-header">Метрики</h2>
+                <div class="data-row">                
+                    <div class="data-key">Численость уникальных пользователей, посетивших официальный сайт регионального органа исполнительной власти, реализующего государственную молодeжную политику</div>
+                    <div class="data-value color-green">5 881 чел.</div>
+                </div>                
+                <div class="data-row">                
+                    <div class="data-key">Количество просмотров официального сайта органа исполнительной власти, реализующего государственную молодeжную политику</div>
+                    <div class="data-value color-green">298 900</div>
+                </div>                
+                <div class="data-row">                
+                    <div class="data-key">Финансирование информационного освещения реализации государственной молодeжной политики</div>
+                    <div class="data-value color-red">0</div>
+                </div>                
+                <div class="data-row">                
+                    <div class="data-key">Количество статей, опубликованных в главном правительственном печатном издании субъекта Российской Федерации о реализации государственной молодeжной политики в регионе</div>
+                    <div class="data-value color-green">32</div>
+                </div>
+            </div>
+        </div>
+        <div class="data-block data-big bg-purple">
+            <div class="data-border">
+                <div class="data-row">                
+                    <div class="data-key">Численость уникальных пользователей, посетивших официальный сайт регионального органа исполнительной власти, реализующего государственную молодeжную политику</div>
+                    <div class="data-value">
+                        <div class="data-diff color-green">+3%</div>
+                        <div class="data-number">90 346</div>
+                    </div>
+                </div> 
+            </div>
+        </div>      
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+        .<br>
+    </div>
+</div>
+    <script type="text/javascript">
+        var client = d3.select("#main-map").node();
+        var width = client.offsetWidth - 20,
+            height = d3.select("body").node().offsetHeight;
+
+        var mapArea = d3.select("#main-map")
+
+        var svg = mapArea.append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        var projection = d3.geo.albers()
+            .rotate([-105, 0])
+            .center([-10, 65])
+            .parallels([52, 64])
+            .scale(width* 2/3)
+            .translate([width / 2, height / 2]);
+
+        var path = d3.geo.path().projection(projection);
+        var i = 0;
+
+        queue()
+            .defer(d3.json, "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/russia.geojson")
+            .await(ready);
+
+        function ready(error, map) {
+            var region = svg.append("g")
+                .attr("class", "regions")
+                .selectAll("path")
+                .data(map.features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr('class', 'region fill-purple stroke-purple-dark')
+                .style("opacity", 0.8);
+
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('.region')) return;
+                d3.select("#main-data").node().classList.toggle('show')
+            }, false);
+        }
+    </script>
+</body>
+</html>
